@@ -1,0 +1,231 @@
+﻿@page "/employees"
+@using EmployeeRegistrationSystem.Models
+@rendermode InteractiveServer
+@using EmployeeRegistrationSystem.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+<h3>Employees</h3>
+
+<label>Full Name</label>
+<input @bind="fullName"/>
+
+<label>Civil ID:</label>
+<input @bind="civilId" />
+
+<label>File Number:</label>
+<input @bind="fileNumber" />
+
+<label>Department:</label>
+<input @bind="department" />
+
+<label>Job Title:</label>
+<input @bind="jobTitle" />
+
+<label>Email:</label>
+<input @bind="email" />
+
+<label>Mobile Number:</label>
+<input @bind="mobileNumber" />
+
+<label>Employment Date:</label>
+<input type="date" @bind="employmentDate" />
+
+<label>Registration Date:</label>
+<input type="date" @bind="registrationDate" />
+
+<button @onclick="RegisterEmployee">Register</button>
+
+@if (errorMessage != "")
+{
+    <p>@errorMessage</p>
+
+}
+@if (successMessage != "")
+{
+    <p>@successMessage</p>
+}
+
+<h3>Employee List</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Full Name</th>
+            <th>Civil ID</th>
+            <th>File Number</th>
+            <th>Department</th>
+            <th>Job Title</th>
+            <th>Email</th>
+            <th>Mobile Number</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var employee in employees)
+        {
+            <tr>
+                <td>@employee.FullName</td>
+                <td>@employee.CivilId</td>
+                <td>@employee.FileNumber</td>
+                <td>@employee.Department</td>
+                <td>@employee.JobTitle</td>
+                <td>@employee.Email</td>
+                <td>@employee.MobileNumber</td>
+                <td>
+                    <button @onclick="() => EditEmployee(employee)">Edit</button>
+                    <button @onclick="() => DeleteEmployee(employee.EmployeedId)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    string fullName = "";
+    int civilId = 0;
+    int fileNumber = 0;
+    string department = "";
+    string jobTitle = "";
+    string email = "";
+    string mobileNumber = "";
+    DateTime employmentDate = DateTime.Now;
+    DateTime registrationDate = DateTime.Now;
+    private int? editingEmployeedId = null;
+    private Employee emolyee = new Employee();
+    string errorMessage = "";
+    string successMessage = "";
+
+    List<Employee> employees = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var db = DbFactory.CreateDbContext();
+
+        employees = await db.Employees.ToListAsync();
+    }
+
+   async Task RegisterEmployee()
+    {
+        errorMessage = "";
+        successMessage = "";
+
+        if (fullName == "")
+        {
+            errorMessage = "Please enter the employee name.";
+            return;
+        }
+
+        if (civilId == 0)
+        {
+            errorMessage = "Please enter the Civil ID.";
+            return;
+        }
+
+        if (fileNumber == 0)
+        {
+            errorMessage = "Please enter the File Number.";
+            return;
+        }
+
+        if (department == "")
+        {
+            errorMessage = "Please enter the Department.";
+            return;
+        }
+
+        if (jobTitle == "")
+        {
+            errorMessage = "Please enter the Job Title.";
+            return;
+        }
+
+        if (email == "")
+        {
+            errorMessage = "Please enter the Email.";
+            return;
+        }
+
+        if (mobileNumber == "")
+        {
+            errorMessage = "Please enter the Mobile Number.";
+            return;
+        }
+        successMessage = "Employee registered successfully!";
+
+        if (editingEmployeedId != null)
+        {
+            using var EditDb = DbFactory.CreateDbContext();
+
+            var employeeToEdit = await EditDb.Employees.FindAsync(editingEmployeedId);
+
+            if (employeeToEdit != null)
+            {
+                employeeToEdit.FullName = fullName;
+                employeeToEdit.CivilId = civilId;
+                employeeToEdit.FileNumber = fileNumber;
+                employeeToEdit.Department = department;
+                employeeToEdit.JobTitle = jobTitle;
+                employeeToEdit.Email = email;
+                employeeToEdit.MobileNumber = mobileNumber;
+                employeeToEdit.EmploymentDate = employmentDate;
+                employeeToEdit.RegistrationDate = registrationDate;
+
+                await EditDb.SaveChangesAsync();
+
+                employees = await EditDb.Employees.ToListAsync();
+
+                successMessage = "Employee updated successfully!";
+                editingEmployeedId = null;
+
+                return;
+            }
+        }
+
+         var employee = new Employee(
+            civilId,
+            fileNumber,
+            fullName,
+            department,
+            jobTitle,
+            email,
+            mobileNumber,
+            employmentDate,
+            registrationDate
+        );
+        using var db = DbFactory.CreateDbContext();
+
+        db.Employees.Add(employee);
+        await db.SaveChangesAsync();
+
+        successMessage = "Employee registered successfully!";
+       
+    }
+
+    async Task DeleteEmployee(int id)
+    {
+        using var db = DbFactory.CreateDbContext();
+
+        var employee = await db.Employees.FindAsync(id);
+
+        if (employee != null)
+        {
+            db.Employees.Remove(employee);
+            await db.SaveChangesAsync();
+            employees = await db.Employees.ToListAsync();
+        }
+    }
+        async Task EditEmployee(Employee employee)
+        {
+            editingEmployeedId = employee.EmployeedId;
+            fullName = employee.FullName;
+            civilId = employee.CivilId;
+            fileNumber = employee.FileNumber;
+            department = employee.Department;
+            jobTitle = employee.JobTitle;
+            email = employee.Email;
+            mobileNumber = employee.MobileNumber;
+            employmentDate = employee.EmploymentDate;
+            registrationDate = employee.RegistrationDate;
+        }
+    }
